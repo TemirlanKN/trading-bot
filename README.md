@@ -1,199 +1,201 @@
-# Telegram Trading Signal Filter Bot
+# Telegram Trading Signal Filter Bot (Cloud + n8n)
 
-🤖 An intelligent bot that monitors Telegram trading channels, filters messages using AI, and forwards only valid trading signals to your Telegram and WhatsApp.
+This guide will help you set up, deploy, and run your trading signal filter bot on a cloud server (e.g., DigitalOcean), using environment variables for secrets, and integrating with n8n for notifications.
+
+---
 
 ## Features
 
-- 📱 **Multi-channel monitoring**: Monitor multiple Telegram channels simultaneously
-- 🤖 **AI-powered filtering**: Uses OpenAI GPT to identify valid trading signals
-- 💬 **Telegram notifications**: Sends filtered signals to your Telegram Saved Messages
-- 📲 **WhatsApp integration**: Forward signals to WhatsApp via Twilio
-- 🚫 **Smart filtering**: Ignores promotional messages, testimonials, and non-signal content
-- ⏰ **Real-time processing**: Processes messages as they arrive
+- Monitors multiple Telegram channels as a user (not a bot)
+- Filters messages using OpenAI (ChatGPT)
+- Forwards valid signals to WhatsApp (via Twilio), Telegram, or n8n
+- Runs 24/7 on a cloud server (no need to keep your laptop on)
 
-## Quick Start
+---
 
-### 1. Install Dependencies
+## 1. Prerequisites
 
-```bash
-pip install -r requirements.txt
-```
+- Telegram account (user, not bot)
+- [OpenAI API key](https://platform.openai.com/api-keys)
+- [Twilio account](https://www.twilio.com/) (for WhatsApp, optional)
+- [DigitalOcean account](https://www.digitalocean.com/) or any VPS provider
+- [n8n account](https://n8n.cloud/) (for workflow automation)
 
-### 2. Configure API Keys
+---
 
-Edit `config.py` with your credentials:
+## 2. Cloud Server Setup (DigitalOcean Example)
 
-```python
-# Telegram API (from https://my.telegram.org/apps)
-TELEGRAM_API_ID = 12345678
-TELEGRAM_API_HASH = 'your_api_hash_here'
+### a. Create a Droplet
 
-# OpenAI API (from https://platform.openai.com/api-keys)
-OPENAI_API_KEY = "sk-your-openai-key-here"
+- Choose Ubuntu 22.04 LTS, cheapest plan is enough
+- Set a root password (check your email)
 
-# Channels to monitor
-CHANNELS_TO_MONITOR = [
-    'FX_TRADING_01',
-    'your_channel_username'
-]
-```
-
-### 3. Run the Bot
+### b. Connect via SSH
 
 ```bash
-python signal_filter_enhanced.py
+ssh root@YOUR_SERVER_IP
 ```
 
-On first run, you'll be prompted to:
+- Use the password from your email (change it on first login)
 
-- Enter your phone number
-- Enter the verification code sent to Telegram
-- Enter your 2FA password (if enabled)
+### c. Update and Install Dependencies
 
-## WhatsApp Setup (Optional)
-
-Follow the detailed guide in `WHATSAPP_SETUP.md`:
-
-1. Create a Twilio account
-2. Get your Account SID and Auth Token
-3. Set up WhatsApp sandbox
-4. Update `config.py` with Twilio credentials
-5. Set `SEND_TO_WHATSAPP = True`
-
-## How It Works
-
-1. **Message Detection**: Bot monitors specified Telegram channels
-2. **AI Analysis**: Each message is sent to OpenAI for analysis
-3. **Signal Filtering**: AI determines if the message contains a valid trading signal
-4. **Notification**: Valid signals are formatted and sent to you
-
-### Valid Signal Criteria
-
-- ✅ Contains trading pair (XAU/USD, EUR/USD, etc.)
-- ✅ Has clear entry price
-- ✅ Includes stop loss (SL) and take profit (TP)
-- ✅ Actionable trading advice
-
-### Filtered Out
-
-- ❌ Promotional messages
-- ❌ Customer testimonials
-- ❌ Invitations to paid groups
-- ❌ General comments without trading data
-
-## Example Output
-
-**Input Message:**
-
-```
-🚨 NEW SIGNAL 🚨
-BUY XAU/USD at 2330.00
-SL: 2325.00
-TP: 2345.00
-Risk: 2%
+```bash
+apt update && apt upgrade -y
+apt install -y python3 python3-pip git screen
 ```
 
-**Bot Output:**
+---
 
-```
-🚨 SIGNAL DETECTED 🚨
+## 3. Project Setup
 
-Pair: XAU/USD
-Entry: 2330.00
-SL: 2325.00
-TP: 2345.00
-Risk: 2%
+### a. Upload Your Code
 
-📊 Source: FX_TRADING_01
-⏰ Time: 2024-01-15 14:30:25
-```
+- **Option 1:** Use GitHub (recommended)
+  ```bash
+  git clone https://github.com/yourusername/yourrepo.git
+  cd yourrepo
+  ```
+- **Option 2:** Use SCP from your laptop:
+  ```bash
+  scp -r /path/to/your/project root@YOUR_SERVER_IP:/root/
+  cd trading-bot
+  ```
 
-## Configuration Options
+### b. Create `.env` File (Do NOT commit this to GitHub!)
 
-### Channels
-
-Add or remove channels in `config.py`:
-
-```python
-CHANNELS_TO_MONITOR = [
-    'channel1',
-    'channel2',
-    'channel3'
-]
+```bash
+nano .env
 ```
 
-### AI Settings
+Paste and fill in:
 
-Adjust AI behavior:
-
-```python
-OPENAI_MODEL = "gpt-3.5-turbo"  # or "gpt-4"
-AI_TEMPERATURE = 0.1  # Lower = more consistent
+```
+TELEGRAM_API_ID=your_id
+TELEGRAM_API_HASH=your_hash
+OPENAI_API_KEY=sk-...
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+WHATSAPP_TO_NUMBER=whatsapp:+1234567890
+WHATSAPP_FROM_NUMBER=whatsapp:+14155238886
+CHANNELS_TO_MONITOR=FX_TRADING_01,Daytrading_GOLD,...
+OPENAI_MODEL=gpt-3.5-turbo
+AI_TEMPERATURE=0.1
+SEND_TO_TELEGRAM=True
+SEND_TO_WHATSAPP=True
 ```
 
-### Notifications
+### c. Install Python Dependencies
 
-Enable/disable notification methods:
-
-```python
-SEND_TO_TELEGRAM = True
-SEND_TO_WHATSAPP = False  # Set to True after Twilio setup
+```bash
+pip3 install -r requirements.txt
 ```
 
-## Troubleshooting
+---
 
-### Common Issues
+## 4. Running the Bot
 
-**"Session file not found"**
+### a. Start the Bot
 
-- Run the script and complete the login process
+```bash
+python3 signal_filter_enhanced.py
+```
 
-**"OpenAI API Error"**
+- On first run, log in with your Telegram phone number and code.
 
-- Check your API key in `config.py`
-- Verify you have credits in your OpenAI account
+### b. Keep It Running 24/7
 
-**"WhatsApp not working"**
+```bash
+screen -S tradingbot
+python3 signal_filter_enhanced.py
+```
 
-- Follow the Twilio setup guide
-- Check your phone number format (must include country code)
+- Detach: `Ctrl+A` then `D`
+- Reattach: `screen -r tradingbot`
 
-**"Channel not found"**
+---
 
-- Make sure you're subscribed to the channel
-- Check the channel username (without @ symbol)
+## 5. n8n Integration (Webhook)
 
-### Logs
+- In n8n, create a Webhook node (POST method)
+- Copy the webhook URL
+- In your Python script, use the `send_to_n8n_webhook()` function to POST signals to n8n
+- Add WhatsApp, Telegram, Email, or other nodes in n8n to forward the signal
 
-The bot provides detailed console output:
+---
 
-- 📨 Incoming messages
-- 🤖 AI responses
-- ✅ Successful notifications
-- ❌ Errors and issues
+## 6. Best Practices
 
-## Security Notes
+- **Never commit `.env` or secrets to GitHub**
+- Add `.env`, `config_local.py`, `__pycache__/`, and `*.pyc` to `.gitignore`
+- Use `python-dotenv` to load secrets from `.env`
+- Use a cloud server for 24/7 operation
+- Use n8n for flexible notifications and integrations
 
-- Keep your API keys secure
-- Don't share your `config.py` file
-- The session file contains your login credentials
-- Consider using environment variables for production
+---
 
-## Cost Information
+## 7. Troubleshooting
 
-- **Telegram**: Free
-- **OpenAI**: ~$0.002 per 1K tokens (very cheap for this use case)
-- **Twilio WhatsApp**: Free tier includes 1,000 messages/month
+- **Bot not running?** Check for errors in the terminal
+- **No messages sent?** Check your `.env` values and n8n webhook
+- **Push blocked by GitHub?** Remove all secrets from your repo and history
+- **Session file not found?** Log in with your Telegram account on first run
+- **WhatsApp not working?** Check Twilio credentials and sandbox setup
 
-## Support
+---
 
-If you encounter issues:
+## 8. Updating or Restarting
 
-1. Check the console output for error messages
-2. Verify all API keys are correct
-3. Ensure you're subscribed to the monitored channels
-4. Check your internet connection
+- To update code: Pull from GitHub or upload new files
+- To restart: Re-run the `python3 signal_filter_enhanced.py` command (in `screen` if needed)
+- To change channels or settings: Edit `.env` and restart the bot
 
-## License
+---
 
-This project is for educational purposes. Use responsibly and in compliance with Telegram's and OpenAI's terms of service.
+## 9. Security Notes
+
+- Keep your `.env` file safe and never share it
+- Do not share your session file (`session_name.session`)
+- Use strong passwords for your server
+
+---
+
+## 10. Example `.env` File
+
+```
+TELEGRAM_API_ID=12345678
+TELEGRAM_API_HASH=your_api_hash
+OPENAI_API_KEY=sk-...
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+WHATSAPP_TO_NUMBER=whatsapp:+1234567890
+WHATSAPP_FROM_NUMBER=whatsapp:+14155238886
+CHANNELS_TO_MONITOR=FX_TRADING_01,Daytrading_GOLD
+OPENAI_MODEL=gpt-3.5-turbo
+AI_TEMPERATURE=0.1
+SEND_TO_TELEGRAM=True
+SEND_TO_WHATSAPP=True
+```
+
+---
+
+## 11. Example `.gitignore`
+
+```
+.env
+config_local.py
+__pycache__/
+*.pyc
+```
+
+---
+
+## 12. Support
+
+- If you get stuck, check the console output for errors
+- Double-check your `.env` and credentials
+- Ask for help with deployment, n8n, or Python if needed
+
+---
+
+**You are now ready to run your trading signal filter bot in the cloud, fully automated!** 🚀
